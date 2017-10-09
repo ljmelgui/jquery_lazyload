@@ -22,15 +22,16 @@
         var settings = {
             threshold       : 0,
             failure_limit   : 0,
-            event           : "scroll",
+            event           : "scroll.lazyload",
             effect          : "show",
             container       : window,
             data_attribute  : "original",
+            data_srcset     : "srcset",
             skip_invisible  : false,
             appear          : null,
             load            : null,
             onerror         : null,
-            placeholder     : "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsQAAA7EAZUrDhsAAAANSURBVBhXYzh8+PB/AAffA0nNPuCLAAAAAElFTkSuQmCC"
+            placeholder     : "data:image/gif;base64,R0lGODdhAQABAPAAAMPDwwAAACwAAAAAAQABAAACAkQBADs="
         };
 
         function update() {
@@ -78,7 +79,7 @@
 
         /* Fire one scroll event per scroll. Not one scroll event per image. */
         if (0 === settings.event.indexOf("scroll")) {
-            $container.on(settings.event, function() {
+            $container.off(settings.event).on(settings.event, function() {
                 return update();
             });
         }
@@ -106,13 +107,22 @@
                     $("<img />")
                         .one("load", function() {
                             var original = $self.attr("data-" + settings.data_attribute);
+                            var srcset = $self.attr("data-" + settings.data_srcset);
+
+                            if (original != $self.attr("src")) {
                             $self.hide();
                             if ($self.is("img")) {
                                 $self.attr("src", original);
-                            } else {
-                                $self.css("background-image", "url('" + original + "')");
+                                    if (srcset != null) {
+                                        $self.attr("srcset", srcset);
+                                    }
+                                } if ($self.is("video")) {
+                                    $self.attr("poster", original);
+                                } else {
+                                    $self.css("background-image", "url('" + original + "')");
+                                }
+                                $self[settings.effect](settings.effect_speed);
                             }
-                            $self[settings.effect](settings.effect_speed);
 
                             self.loaded = true;
 
@@ -132,14 +142,17 @@
                                 settings.onerror($self, settings);
                             }
                         })
-                        .attr("src", $self.attr("data-" + settings.data_attribute));
+                        .attr({
+                            "src": $self.attr("data-" + settings.data_attribute),
+                            "srcset": $self.attr("data-" + settings.data_srcset) || ""
+                        });
                 }
             });
 
             /* When wanted event is triggered load original image */
             /* by triggering appear.                              */
             if (0 !== settings.event.indexOf("scroll")) {
-                $self.on(settings.event, function() {
+                $self.off(settings.event).on(settings.event, function() {
                     if (!self.loaded) {
                         $self.trigger("appear");
                     }
@@ -148,7 +161,7 @@
         });
 
         /* Check if something appears when window is resized. */
-        $window.on("resize", function() {
+        $window.off("resize.lazyload").bind("resize.lazyload", function() {
             update();
         });
 
@@ -165,7 +178,7 @@
         }
 
         /* Force initial check if images should appear. */
-        $(document).ready(function() {
+        $(function() {
             update();
         });
 
